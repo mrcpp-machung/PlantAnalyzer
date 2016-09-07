@@ -1,0 +1,135 @@
+import cv2
+import numpy as np
+import leds
+import image_processing as IP
+import os
+from time import sleep
+import ConfigParser
+
+config = ConfigParser.ConfigParser()
+config.read('analyzer.cfg')
+
+def status_printer(text, printer = None):
+    """
+    prints "text" to either the the stdout, or uses the supplied printer(string) function
+    print() must take exactly one argument
+    """
+    if printer != None:
+        printer(text)
+    else:
+        print(text)
+
+class measurement:
+    """
+    a class to hold all the informations about a measurement and process them
+    member functions:
+        take_photos: takes all three neccesary photos (RGB,Red and IR)
+        analyze: analyzes the pictures and sets the corresponiding variables
+        save(filename=name): saves the measurement files (pictures and results)
+    variables:
+        imRGB:   Those are the images needed 
+        imRed:  self explanatory
+        imIR:   --------""---------
+        imNDVI: --------""---------
+        imLeft: --------""---------
+    
+        a lot of Numbers I don't know about yet
+    """
+
+    def __init__(self, name):
+        self.name = name
+
+
+    def takePhotos(self, statusbar_printer = None):
+        """
+        takes all three photos and saves them to /home/pi/images/<name>.jpg
+        variables:
+            append_text_to_statusbar: a function that prints text to a 
+            statusbar. If handed none, the standard print command will be used
+    `   """
+        leds.initLEDs()
+        self.IRFilename = "./data/" + self.name + "IR.jpg"
+        self.RedFilename = "./data/" + self.name + "Red.jpg"
+        self.RGBFilename = "./data/" + self.name + "RGB.jpg"
+        self.LeftFilename = "./data/" + self.name + "Left.jpg"
+        self.NDVIFilename = "./data/" + self.name + "NDVI.jpg"
+        self.IRshearedFilename = "./data/" + self.name 
+        self.IRshearedFilename += "IRsheared.jpg"
+
+        #take the RGB picture
+        leds.setWhite(100)      #TODO: set this to the right value
+        cmd = "/home/pi/bin/takePhoto.py -f " + self.RGBFilename
+        os.system(cmd)
+        leds.setWhite(0)
+        status_printer("RGB Photo taken\n",  statusbar_printer)
+            
+
+        leds.setRed(100)
+        cmd = "/home/pi/bin/takePhoto.py -f " + self.RedFilename
+        os.system(cmd)
+        leds.setRed(0)
+        status_printer("Red photo taken\n",  statusbar_printer)
+
+        leds.setIR(100)
+        cmd = "sshpass -p \"raspberry\" ssh pi@"+config.get('general','raspi2IP') 
+        cmd += " /home/pi/bin/takePhoto.py -f  /home/pi/tmp1.jpg"
+        err = os.system(cmd)
+        leds.setIR(0)
+        if (err != 0):
+            status_printer("Something went wrong while taking the remote photo\n", 
+                statusbar_printer)
+
+        else:                
+            status_printer("IR photo taken\n", statusbar_printer)
+                
+        leds.setWhite(100)
+        cmd = "sshpass -p \"raspberry\" ssh pi@raspi2" 
+        cmd += " /home/pi/bin/takePhoto.py -f  /home/pi/tmp2.jpg"
+        err = os.system(cmd)
+        leds.setWhite(0)
+        if (err != 0):
+            status_printer("Something went wrong while taking the remote photo\n", 
+                statusbar_printer)
+        else:
+            status_printer("Left Photo taken\n",statusbar_printer)
+        
+        cmd = "sshpass -p \"raspberry\" scp pi@raspi2:/home/pi/tmp1.jpg " 
+        cmd += self.IRFilename
+        err = os.system(cmd)
+        if (err != 0):
+            status_printer("Something went wrong while retrieving the remote photo.\n",
+                           statusbar_printer) 
+            status_printer("Is the  IP-Adress in /etc/hosts correct?\n", statusbar_printer)
+        else:
+            status_printer("Left photo retrieved\n",statusbar_printer)
+        
+        cmd = "sshpass -p \"raspberry\" scp pi@raspi2:/home/pi/tmp2.jpg " 
+        cmd += self.LeftFilename
+        err = os.system(cmd)
+        if (err != 0):
+            status_printer("Something went wrong while retrieving the remote photo.\n",
+                           statusbar_printer) 
+            status_printer("Is the  IP-Adress in /etc/hosts correct?\n", statusbar_printer)
+        else:
+            status_printer("IR photo retrieved\n",statusbar_printer)
+
+        
+        
+        self.imRGB = cv2.imread(self.RGBFilename)
+        self.imRed = cv2.imread(self.RedFilename)
+        self.imIR =  cv2.imread(self.IRFilename)
+        self.imLeft =  cv2.imread(self.IRFilename)
+
+    def analyze(self, statusbar_printer=None):
+        #here imRGB doubles as imRight, but is not stored again, aus we are
+        #going to exclusively use the undistorted images
+        status_printer("undistorting images...\n", statusbar_printer)
+        self.imRGB, self.imLeft = IP.undistortStereoPair(self.imRGB, self.imLeft)
+        self.imRed, self.imIR = IP.undistortStereoPair(self.imRed, self.imIR)
+        status_printer("aligning images for NDVIcalculations\n", statusbar_printer)
+        self.imIRsheared = IP.alignImages(self.imRGB,self.imIR)
+        status_printer("calculating NDVI Values\n", statusbar_printer)
+        self.imNDVI = IP.calculateNDVI(self.imRed,self.imIRsheared)
+
+        
+
