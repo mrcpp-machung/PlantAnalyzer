@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 from config import config
+from scipy import ndimage as nd
+import scipy as sp
+from scipy import signal
 
 
 def alignImages(im1, im2, showMatches=False, threshold=0.5,
@@ -132,8 +135,45 @@ def calculateNDVI(rgb, ir, grayscale=False):
     ndvi *= 128
     ndvi = np.around(ndvi)
     ndvi = ndvi.astype(np.uint8)
+    ndvi = nd.median_filter(ndvi, 5)
+    ndvi = cv2.applyColorMap(ndvi, cv2.COLORMAP_PARULA)
+    ndvi_float = nd.median_filter(ndvi_float, 5)
 
     return (ndvi, ndvi_float)
+
+
+def deflickerImage(im, column):
+    """
+    deflickers the image im based on the brightness variation in the column specified
+    in the config files. Helps to cope with the flickering of the LEDs
+    start and end specify (in pixels) the length of the correction bar in the Box.
+    ATTENTION: This must be called before undistorting the images!
+    """
+    start = config.getint('image processing', 'deflicker start')
+    end = config.getint('image processing', 'deflicker end')
+
+    # creating the flicker profile and smoothing it and setting the edges to the mean
+    if (len(im.shape) == 3):
+        flicker_profile = im[:, column, 2]
+    else:
+        flicker_profile = im[:, column]
+    mean = np.mean(flicker_profile[start:end])
+    flicker_profile[:start] = mean
+    flicker_profile[end:] = mean
+    flicker_profile = np.float32(flicker_profile) / mean
+    flicker_profile = sp.signal.medfilt(flicker_profile, 51)
+
+    correction = np.ones(im.shape)                          # creating the matrix
+    flicker_profile = flicker_profile.reshape(len(flicker_profile), 1)
+    if (len(im.shape) == 3):            # I am sure, there are better ways to do this...
+        correction[:, :, 0] = correction[:, :, 0] / flicker_profile
+        correction[:, :, 1] = correction[:, :, 1] / flicker_profile
+        correction[:, :, 2] = correction[:, :, 2] / flicker_profile
+    else:
+        correction[:, :] = correction / flicker_profile
+
+    im_corrected = np.uint8(np.around(np.clip(correction * im.astype(float), 0, 255)))
+    return im_corrected
 
 
 def undistortStereoPair(imR, imL):
@@ -143,7 +183,8 @@ def undistortStereoPair(imR, imL):
         - imR is the right image
         - imL is the left image
         - paramFilename is the filename, where the Distortion parameters should be saved.
-          It must by a .npz-File containing ['PR', 'DCL', 'CML', 'E', 'RR', 'F', 'Q', 'R', 'T', 'RL', 'DCR', 'CMR', 'PL']
+          It must by a .npz-File containing ['PR', 'DCL', 'CML', 'E', 'RR', 'F',
+          'Q', 'R', 'T', 'RL', 'DCR', 'CMR', 'PL']
           where CMR, CML, DCR and DCL are the matrices and vectors obtained from cv2.calibrate and
           everything else from cv2.stereoRectify
           The current parameters for the raspi-pair are saved in ../data/stereoParams.npz

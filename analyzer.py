@@ -51,8 +51,9 @@ class dummy:
         if hasattr(proj, 'imNDVI'):
             cv2.imwrite(proj.NDVIFilename, proj.imNDVI)
             pixbuf = GdkPixbuf.Pixbuf.new_from_file(proj.NDVIFilename)
-#            pixbuf = pixbuf.scale_simple(height, width,
-#                                         GdkPixbuf.InterpType.BILINEAR)
+            if self.zoom:
+                pixbuf = pixbuf.scale_simple(height, width,
+                                             GdkPixbuf.InterpType.BILINEAR)
             self.imNDVI.set_from_pixbuf(pixbuf)
 
         if hasattr(proj, 'imRGB'):
@@ -90,6 +91,13 @@ class dummy:
 #        if hasattr(proj,'imIRsheared'):
 #            cv2.imwrite( proj.IRshearedFilename, proj.imIRsheared)
 
+    def on_toggle_zoom_clicked(self, object, data=None):
+        if self.zoom is False:
+            self.zoom = True
+        else:
+            self.zoom = False
+        self.update_images()
+
     def on_ndviBox_button_press_event(self, box, event):
 #        pixbuf = self.imNDVI.get_pixbuf()
         x = int(event.x)
@@ -103,7 +111,8 @@ class dummy:
         if hasattr(proj, 'NDVI_float'):
             fx = float(proj.NDVI_float.shape[1]) / float(self.imNDVI.get_allocation().height)
             fy = float(proj.NDVI_float.shape[0]) / float(self.imNDVI.get_allocation().width)
-            fx = fy = 1      # to be changed later
+            if self.zoom is False:
+                fx = fy = 1      # to be changed later
             ndvi_value = proj.NDVI_float[int(fy * y), int(fx * x)]
             self.append_text_to_statusbar("NDVI-Value: " + str(ndvi_value) + "\n")
         else:
@@ -238,6 +247,7 @@ class dummy:
         self.filefilter.add_pattern("*.zip")
         self.current_folder = os.path.expanduser('~')
         self.aboutdialog = self.builder.get_object("aboutdialog1")
+        self.zoom = False
 
         self.projectname_dialog = self.builder.get_object("projectname_dialog")
 

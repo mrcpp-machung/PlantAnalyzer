@@ -4,7 +4,6 @@ import leds
 import image_processing as IP
 from config import config
 import os
-import shutil
 import zipfile
 # from time import sleep
 # import ConfigParser
@@ -134,6 +133,7 @@ class measurement:
         self.imIR = cv2.imread(self.IRFilename)
         self.imRight = cv2.imread(self.RightFilename)
         self.undistorted = False
+        self.deflickered = False
 
     def analyze(self, statusbar_printer=None):
         """
@@ -143,6 +143,16 @@ class measurement:
             append_text_to_statusbar: a function that prints text to a
             statusbar. If handed none, the standard print command will be used
         """
+#        status_printer("aligning images for NDVIcalculations\n",
+#                       statusbar_printer)
+#        self.imIRsheared = IP.alignImages(self.imRGB, self.imIR)
+
+        if not self.deflickered:
+            status_printer("deflickering the images\n", statusbar_printer)
+            self.imRed = IP.deflickerImage(self.imRed, config.getint('image processing', 'deflicker column red'))
+            self.imIR = IP.deflickerImage(self.imIR, config.getint('image processing', 'deflicker column ir'))
+            self.deflickered = True
+
         # here imRGB doubles as imRight, but is not stored again, as we are
         # going to exclusively use the undistorted images
         if not self.undistorted:
@@ -153,13 +163,13 @@ class measurement:
             tmp2, self.imIR = IP.undistortStereoPair(tmp, self.imIR)
             tmp2, self.imRed = IP.undistortStereoPair(tmp, self.imRed)
             self.undistorted = True
-#        status_printer("aligning images for NDVIcalculations\n",
-#                       statusbar_printer)
-#        self.imIRsheared = IP.alignImages(self.imRGB, self.imIR)
+
         status_printer("calculating NDVI Values\n", statusbar_printer)
         (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(self.imRed, self.imIR, grayscale=False)
-        status_printer("Calculating disparity map \n", statusbar_printer)
-        self.computeDisparity()
+
+        if not hasattr(self, 'disparity'):
+            status_printer("Calculating disparity map \n", statusbar_printer)
+            self.computeDisparity()
 
     def computeDisparity(self):
         """
@@ -256,3 +266,4 @@ class measurement:
         self.NDVI_float = np.load(self.NDVI_floatFilename + ".npy")
 
         self.undistorted = True
+        self.deflickered = True
