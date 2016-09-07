@@ -167,9 +167,9 @@ class measurement:
         status_printer("calculating NDVI Values\n", statusbar_printer)
         (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(self.imRed, self.imIR, grayscale=False)
 
-        if not hasattr(self, 'disparity'):
-            status_printer("Calculating disparity map \n", statusbar_printer)
-            self.computeDisparity()
+        #if not hasattr(self, 'disparity'):
+        status_printer("Calculating disparity map \n", statusbar_printer)
+        self.computeDisparity()
 
     def computeDisparity(self):
         """
