@@ -79,6 +79,10 @@ class dummy:
 
         if hasattr(proj, 'imRight'):
             cv2.imwrite(proj.RightFilename, proj.imRight)
+
+
+        if hasattr(proj, 'leafMask'):
+            cv2.imwrite(proj.leafMaskFilename, proj.leafMask)
 #            pixbuf = GdkPixbuf.Pixbuf.new_from_file(proj.IRFilename)
 #            pixbuf = pixbuf.scale_simple(height, width,
 #                                         GdkPixbuf.InterpType.BILINEAR)
