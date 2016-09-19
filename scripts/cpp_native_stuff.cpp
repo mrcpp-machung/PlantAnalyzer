@@ -38,9 +38,6 @@ void cpp_colorMask(uint8_t* img, uint8_t* mask, int m, int n,
             for (j=0; j<m; j++){
                 if (colorDiff(&img[3*(i*m+j)], &colors[3*k]) < threshold){
                     mask[i*m+j] = 255;
-//                    img[3*(i*m+j)] = 147;
-//                    img[3*(i*m+j)+1] = 20;
-//                    img[3*(i*m+j)+2] = 255;
                 }
             }
         }

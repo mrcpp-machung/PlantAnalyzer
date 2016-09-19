@@ -22,25 +22,42 @@ redPWM = GPIO.PWM(_redPort, _PWMFreq)
 irPWM = GPIO.PWM(_irPort, _PWMFreq)
 
 
+def initLEDs():
+    """
+    Starts the PWM Processes for the LEDs.
+
+    .. warning:: **Must** be called before using the LEDs
+    """
+    whitePWM.start(0)
+    redPWM.start(0)
+    irPWM.start(0)
+
+
 def setRed(brightness):
     """
-    self explanatory
+    sets The Red LED to the PWM value ``brightness``
+
+    :param brightness: The PWM value. Can range from 0 (off) to 100 (completely turned on)
+    :rtype: None
     """
     redPWM.ChangeDutyCycle(brightness)
 
 
 def setIR(brightness):
+    """
+    sets The IR LED to the PWM value ``brightness``
+
+    :param brightness: The PWM value. Can range from 0 (off) to 100 (completely turned on)
+    :rtype: None
+    """
     irPWM.ChangeDutyCycle(brightness)
 
 
 def setWhite(brightness):
+    """
+    sets The White LED to the PWM value ``brightness``
+
+    :param brightness: The PWM value. Can range from 0 (off) to 100 (completely turned on)
+    :rtype: None
+    """
     whitePWM.ChangeDutyCycle(brightness)
-
-
-def initLEDs():
-    """
-    starts the PWM Processes for the LEDs
-    """
-    whitePWM.start(0)
-    redPWM.start(0)
-    irPWM.start(0)

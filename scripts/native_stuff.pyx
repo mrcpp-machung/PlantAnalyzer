@@ -1,10 +1,9 @@
 
 """
-colorMask.pyx
+native_stuff.pyx
 
-C++-Implementation of the colorMask Function.
-Main Purpose is to learn the correct usage of Cython
-
+Wrapper for the C-Implementation of the colorMask Function. May contain more
+native code later on.
 """
 
 import cython
@@ -18,16 +17,29 @@ cdef extern from "cpp_native_stuff.cpp":
     void cpp_colorMask(np.uint8_t * img, np.uint8_t * mask,
                        int m, int n, np.uint8_t * colors, int l, int threshold)
 
-# cdef extern void cpp_colorMask(np.uint8_t* img, int m, int n,
-# np.uint8_t* colors, int l, int threshold)
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def colorMask(np.ndarray[np.uint8_t, ndim=3, mode="c"] img,
               np.ndarray[np.uint8_t, ndim=2, mode="c"] mask, colors, int threshold):
     """
-    Comment stuff...
+    Wrapper for the natively in C implemented cpp_colorMask function.
+
+    Creates a BW-Mask based on the list ``colors`` masking the pixels matching
+    one of the colors (within a certain accuracy defined by ``threshold``) white
+    and all others black.
+
+    :param img:     The image that should be masked
+    :param mask:    The array where the mask is written to.
+        .. warning:: if img.shape = [m,n,3], -> mask.shape = [m,n]
+    :param colors:  A list of colors that should be masked. The entries must be
+        of the form [B,G,R], because that is the pixel format of opencv images
+    :param threshold:   The threshold, by which the color value may differ from
+    the colors in the list to be still considered to be the *same* color.
+    The difference is calculated as the euclidean distance between the colors in
+    the BGR-color space.
+    :rtype: None. The mask is written to the array ``mask`` which is passed to the
+        function.
     """
     cdef int m, n, l
     m, n = img.shape[1], img.shape[0]

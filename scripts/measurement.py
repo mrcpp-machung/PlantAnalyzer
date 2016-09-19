@@ -29,22 +29,27 @@ class measurement:
 |    **member functions:**
 |        look at the source code, or call `help(measurement)`
 |    **variables:**
-|        ``imRGB:``         RGB image as a opencv-matrix (numpy array)
-|        ``imRed:``         self explanatory
-|        ``imIR:``          --------""---------
-|        ``imNDVI:``        --------""---------
-|        ``imRight:``      image from the right camera. Used for the depth map
-|        ``Disp:``          image of the disparity map
-|        ``NDVI_float:``    a huge array with floats made to fool Biologists that they
+|       ``imRGB:``         RGB image as a opencv-matrix (numpy array)
+|       ``imRed:``         self explanatory
+|       ``imIR:``          --------""---------
+|       ``imNDVI:``        --------""---------
+|       ``imRG``            -------""---------
+|       ``imRight:``      image from the right camera. Used for the depth map
+|       ``Disp:``          image of the disparity map
+|       ``NDVI_float:``    a huge array with floats made to fool Biologists that they
                             have super precise data (which they don't!)
-|        ``RGBFilename``    Filename, where the RGB image is stored on the hard drive
-|        ``RedFilename``    self explanatory....
-|        ``IRFilename``     self explanatory
-|        ``RightFilename``  --------""----------
-|        ``DispFilename``   Filename of the disparity map
-|        ``NDVIFilename``   Filename of the NDVI heatmap (.jpg)
-|        ``NDVI_floatFilename`` Filename of the raw NDVI-Values as floats (.npy)
+|       ``rg:``            heat map of the red-green rations of the imRGB
+|       ``rg_float         red-green ratios of imRGB
+|       ``RGBFilename``    Filename, where the RGB image is stored on the hard drive
+|       ``RedFilename``    self explanatory....
+|       ``IRFilename``     self explanatory
+|       ``RightFilename``  --------""----------
+|       ``DispFilename``   Filename of the disparity map
+|       ``RGFilename``     Filename of the RG Ratio heatmap (.jpg)
+|       ``NDVIFilename``   Filename of the NDVI heatmap (.jpg)
 |        a lot of Numbers I don't know about yet
+|       ``leafArea``        An estimate of the total leaf area
+|       ``averageNDVI``     average NDVI value of the leaves.
     """
 
     def __init__(self, name):
@@ -57,16 +62,16 @@ class measurement:
         self.RGBFilename = "./data/" + self.name + "RGB.jpg"
         self.RightFilename = "./data/" + self.name + "Right.jpg"
         self.NDVIFilename = "./data/" + self.name + "NDVI.jpg"
+        self.RGFilename = "./data/" + self.name + "RG.jpg"
         self.DispFilename = "./data/" + self.name + "Disp.jpg"
-        self.NDVI_floatFilename = "./data/" + self.name + "NDVI_float"
         self.leafMaskFilename = "./data/" + self.name + "leafMask.jpg"
 
     def takePhotos(self, statusbar_printer=None):
         """
-        takes all four photos and saves them to /home/pi/images/<name>.jpg
-|        **parameters:**
-|            ``statusbar_printer:``  a function that prints text to a
-|            statusbar. If handed none, the standard print command will be used
+        Takes all four photos and saves them to /home/pi/images/<name>.jpg
+
+        :param statusbar_printer:  a function that prints text to a statusbar. If handed none, the standard print command will be used
+        :rtype: None
        """
 
         leds.initLEDs()
@@ -133,11 +138,12 @@ class measurement:
     def analyze(self, statusbar_printer=None):
         """
         This does the whole analyzation process. So it first deflickers the images,
-        then undistorts them and after that calculates the NDVI values and the
-        disparity map.
-|        **parameters:**
-|            ``statusbar_printer:``   a function that prints text to a
-|            statusbar. If handed none, the standard print command will be used
+        then undistorts them and after that calculates the NDVI values, red gree ratios
+        and the disparity map.
+
+        :param statusbar_printer: a function that prints text to a statusbar.
+            If handed none, the standard print command will be used
+        :rtype: None
         """
 #        status_printer("aligning images for NDVIcalculations\n",
 #                       statusbar_printer)
@@ -166,12 +172,19 @@ class measurement:
         (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(
             self.imRed, self.imIR, grayscale=False)
 
+        status_printer("calculating red-green ratios\n", statusbar_printer)
+        (self.imRG, self.RG_float) = IP.calculateRGRatio(
+            self.imRGB, gamma=0.5)
+
         status_printer("Masking leaves\n", statusbar_printer)
         self.maskLeaves()
 
         # if not hasattr(self, 'disparity'):
         status_printer("Calculating disparity map \n", statusbar_printer)
         self.computeDisparity()
+        status_printer(
+            "Calculating the leaf area and the average NDVI value\n", statusbar_printer)
+        self.calculateLeafAreaAndAverageNDVI()
 
     def computeDisparity(self):
         """
@@ -195,6 +208,8 @@ class measurement:
         disparity = (disparity * 255).astype(np.uint8)
         self.disparity = cv2.resize(
             disparity, None, fx=2, fy=2, interpolation=cv2.INTER_AREA)
+        # this really should be the minimum disparity
+        self.disparity = np.maximum(self.disparity, 80)
         cv2.imwrite(self.DispFilename, self.disparity)
 
     def maskLeaves(self):
@@ -205,19 +220,33 @@ class measurement:
         self.leafMask = np.copy(
             self.imNDVI[:, :, 0])    # just create an array of the right size
         greys = ([np.array([0, 0, 0])])
-        for i in range(0, 50):
+        for i in range(0, 50):       # fill it with 50 shades of grey
             greys.append([5 * i, 5 * i, 5 * i])
 
         native_stuff.colorMask(self.imRGB, self.leafMask, greys, 20)
         self.leafMask = cv2.bitwise_not(self.leafMask)
 
+    def calculateLeafAreaAndAverageNDVI(self):
+        """
+        Calculates an estimate of the total leaf area of the plant using the disparity map and
+        the mask.
+        """
+        # calculate the depthMap
+        areaMap = config.getfloat('depth map', 'a') / \
+            self.disparity.astype(float)**2
+        areaMap += config.getfloat('depth map', 'b')
+        np.putmask(areaMap, self.leafMask < 100, 0.0)
+        self.leafArea = np.sum(areaMap)
+        areaMap *= self.NDVI_float
+        self.averageNDVI = np.sum(areaMap) / self.leafArea
+
     def save(self, filename="gurkensalat.zip"):
         """
         saves the images and all the data from the analyzation to a Zip file
         containing the images and a .txt-file with the analyzed values.
-|        **parameters:**
-|           ``filename``: The name of the zip file. If it has no filename extension
-            .zip will be automatically added.
+
+        :param filename: The name of the zip file. If it has no filename extension .zip will be automatically added.
+        :rtype: None
         """
         if filename == "gurkensalat.zip":   # nobody will ever call his project gurkensalat,
             filename = self.name + ".zip"   # hopefully... It would cause a really funny error
@@ -228,8 +257,8 @@ class measurement:
         np.save(self.NDVI_floatFilename, self.NDVI_float)
 
         with open("data.txt", "w") as text_file:
-            text_file.write("Average NDVI Value = \n")
-            text_file.write("Total Leaf Area = \n")
+            text_file.write("Average NDVI Value:\n" + str(self.averageNDVI) + "\n")
+            text_file.write("Total Leaf Area:\n" + str(self.leafArea) + "\n")
 
         file = zipfile.ZipFile(filename, mode='w')
         file.write(self.RGBFilename, "RGB.jpg")
@@ -238,15 +267,17 @@ class measurement:
         file.write(self.NDVIFilename, "NDVI.jpg")
         file.write(self.RightFilename, "Right.jpg")
         file.write(self.DispFilename, "disparity.jpg")
-        file.write(self.DispFilename, "leafMask.jpg")
-        file.write(self.NDVI_floatFilename + ".npy", "NDVI_float.npy")
+        file.write(self.leafMaskFilename, "leafMask.jpg")
+#        file.write(self.NDVI_floatFilename + ".npy", "NDVI_float.npy")
         file.write("data.txt")
         file.close()
 
     def open(self, filename="mess.zip"):
         """
-        opens `filename` (presumably a zip-file created by self.save) and sets all names etc.
-        accordingly and opens the images.
+        Loads a zip file as it is created by self.save and relocates all images to the right positions
+
+        :param filename:    The name of the zip-file, that should be opened.
+        :rtype: None
         """
         self.name = os.path.basename(filename)[:-4]   # remove the .zip ending.
         self.IRFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "IR.jpg"
@@ -254,37 +285,53 @@ class measurement:
         self.RGBFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "RGB.jpg"
         self.RightFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "Right.jpg"
         self.NDVIFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "NDVI.jpg"
+        self.RGFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "RG.jpg"
         self.DispFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "Disp.jpg"
         self.leafMaskFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "leafMask.jpg"
-        self.NDVI_floatFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "NDVI_float"
+#        self.NDVI_floatFilename = "/home/pi/PlantAnalyzer/data/" + self.name + "NDVI_float"
         print(self.name)
 
         file = zipfile.ZipFile(filename, mode='r')
         RGB = file.extract("RGB.jpg")
         Red = file.extract("Red.jpg")
         NDVI = file.extract("NDVI.jpg")
+        RG = file.extract("RG.jpg")
         IR = file.extract("IR.jpg")
         Right = file.extract("Right.jpg")
         disparity = file.extract("disparity.jpg")
         leafMask = file.extract("leafMask.jpg")
-        NDVI_float = file.extract("NDVI_float.npy")
+#        NDVI_float = file.extract("NDVI_float.npy")
+        textfile = file.extract("data.txt")
+
         os.rename(RGB, self.RGBFilename)
         os.rename(Red, self.RedFilename)
         os.rename(NDVI, self.NDVIFilename)
+        os.rename(RG, self.RGFilename)
         os.rename(IR, self.IRFilename)
         os.rename(Right, self.RightFilename)
         os.rename(disparity, self.DispFilename)
         os.rename(leafMask, self.leafMaskFilename)
-        os.rename(NDVI_float, self.NDVI_floatFilename + ".npy")
+#        os.rename(NDVI_float, self.NDVI_floatFilename + ".npy")
 
         self.imRGB = cv2.imread(self.RGBFilename)
         self.imRed = cv2.imread(self.RedFilename)
-        self.imNDVI = cv2.imread(self.NDVIFilename, 0)
+        self.imNDVI = cv2.imread(self.NDVIFilename)
+        self.imRG = cv2.imread(self.RGFilename)
         self.imIR = cv2.imread(self.IRFilename)
         self.imRight = cv2.imread(self.RightFilename)
         self.disparity = cv2.imread(self.DispFilename, 0)
         self.leafMask = cv2.imread(self.leafMaskFilename)
-        self.NDVI_float = np.load(self.NDVI_floatFilename + ".npy")
+#        self.NDVI_float = np.load(self.NDVI_floatFilename + ".npy")
+
+        with open(textfile, "r") as text_file:
+            tmplist = []
+            for l in text_file:
+                tmplist.append(l)
+            self.averageNDVI = float(tmplist[1])
+            self.leafArea = float(tmplist[3])
+
+        (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(
+            self.imRed, self.imIR, grayscale=False)
 
         self.undistorted = True
         self.deflickered = True

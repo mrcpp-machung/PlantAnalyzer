@@ -349,7 +349,50 @@
                     <property name="lines">3</property>
                   </object>
                   <packing>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
+                    <property name="tab_fill">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow" id="scrolledwindow7">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkViewport" id="viewport7">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkEventBox" id="rgBox">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <signal name="button-press-event" handler="on_rgBox_button_press_event" swapped="no"/>
+                            <child>
+                              <object class="GtkImage" id="imRG">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="stock">gtk-missing-image</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">4</property>
+                  </packing>
+                </child>
+                <child type="tab">
+                  <object class="GtkLabel" id="tabRG">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">RG</property>
+                    <property name="angle">0.12</property>
+                    <property name="lines">3</property>
+                  </object>
+                  <packing>
+                    <property name="position">4</property>
                     <property name="tab_fill">False</property>
                   </packing>
                 </child>
@@ -374,7 +417,8 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="tooltip_text" translatable="yes">Change the name of the current project</property>
+                        <property name="tooltip_text" translatable="yes">Change the name of the 
+current project</property>
                         <property name="use_stock">True</property>
                         <property name="image_position">top</property>
                         <signal name="clicked" handler="on_button_new_clicked" swapped="no"/>
@@ -390,7 +434,8 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="tooltip_text" translatable="yes">Take all three photos</property>
+                        <property name="tooltip_text" translatable="yes">Take all three 
+photos</property>
                         <signal name="clicked" handler="on_button_shutter_clicked" swapped="no"/>
                         <child>
                           <placeholder/>
@@ -407,7 +452,8 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="tooltip_text" translatable="yes">Process the images</property>
+                        <property name="tooltip_text" translatable="yes">Process the 
+images</property>
                         <signal name="clicked" handler="on_button_analyze_clicked" swapped="no"/>
                         <child>
                           <placeholder/>

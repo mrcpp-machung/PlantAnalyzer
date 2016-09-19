@@ -1,6 +1,6 @@
 """
 This module is a collection of the most important image processing functions
-needed by the ``measurement`` class. Some adf
+needed by the ``measurement`` class.
 """
 
 
@@ -11,21 +11,19 @@ from scipy import ndimage as nd
 import scipy as sp
 from scipy import signal
 
+
 def alignImages(im1, im2, showMatches=False, threshold=0.5,
                 resizefactor=0.5, append_text_to_statusbar=None):
     """
     expects two images, assumes that both of them are grayscale of both them are RGB.
     Returns an aligned version of im2 in the size of im1
-|   **Parameters:**
-|       ``im1:``           Any opencv image
-|       ``im2:``           OpenCV image with the same color space
-|       ``showMatches:``   If ``True``, the matches are shown. Default = False
-|       ``threshold:``     Parameter, how good the matches must be to be considered. Default = 0.5
-                    If too low, not enough matches might be found. If too high the alignment may fail
-|       ``resizefactor:``  The factor, by which the images are resized
-         for the sift-detector. Too high -> too much RAM usage. Too low -> not accurate enough
-|   **Out:**
-|        ``result:`` The aligned version of im2.
+
+   :param im1:           Any opencv image
+   :param im2:           OpenCV image with the same color space
+   :param showMatches:   If ``True``, the matches are shown. Default = False
+   :param threshold:     Parameter, how good the matches must be to be considered. Default = 0.5 If too low, not enough matches might be found. If too high the alignment may fail
+    :param resizefactor:  The factor, by which the images are resized for the sift-detector. Too high -> too much RAM usage. Too low -> not accurate enough
+   :rtype: opencv image/numpy array with the same dimensions as ``im2``
     """
     # Resize images for less ram usage
     im1small = cv2.resize(im1, None, fx=resizefactor,
@@ -90,12 +88,10 @@ def alignImages(im1, im2, showMatches=False, threshold=0.5,
 def cropFrame(im, framesize=0.1):
     """
     crops the image by a constant percentage on each border.
-|    **Parameters:**
-|        ``im:``        the input image
-|        ``framesize:`` is the relative size of the frame, that needs to be cropped
-            away. e.g. 0.1 equals a frame 10% of the size of image
-|    **Out:**
-|       ``result:``     the resulting image
+
+    :param im:        the input image
+    :param framesize: is the relative size of the frame, that needs to be cropped away. e.g. 0.1 equals a frame 10% of the size of image
+    :rtype: opencv image/numpy array
     """
     width = len(im[0:])
     height = len(im[0, 0:])
@@ -110,12 +106,10 @@ def floatIm2RGB(floatIm):
     """
     converts a float Image to a normalized RGB image with the maxmimum possible dynamic range.
     Should work with both, grayscale and RGB images
-|    **Parameters:**
-|       ``floatIm``: Literally any numpy array, but presumably a image that exceeds the
+
+    :param floatIm: Literally any numpy array, but presumably a image that exceeds the
             normal limitations of a opencv image
-|    **Out:**
-|       ``rescaled``: A rescaled version of the input, having the maximum possible dynamic range.
-            (in a uint8)
+    :rtype: ``rescaled`` is a rescaled version of the input, having the maximum possible dynamic range. (in a uint8)
     """
     amax = np.amax(floatIm)
     amin = np.amin(floatIm)
@@ -128,15 +122,11 @@ def floatIm2RGB(floatIm):
 def calculateNDVI(rgb, ir, grayscale=False):
     """
     calculates the NDVI-values from the images rgb and IR
-|   **Parameters:**
-|      ``rgb:``        The RGB-Image which should be used for the NDVI-Calculation
-|      ``ir:``         The IR-Image which sould be used for the NDVI-Calculation
-|      ``grayscale:``  specifies, whether `rgb` and `ir` are grayscale images
-            (only one color channel) or rgb images (three color channels).
-            *Make sure, that both images have the same number of color channels
-|   **Out:**
-|   ``(ndvi, ndvi_float)``: ndvi is a heatmap image of the ndvi-values. ndvi_float is
-        a float-array with the same dimensions as ndvi containing the raw NADVI-Values
+
+    :param rgb:        The RGB-Image which should be used for the NDVI-Calculation
+    :param ir:         The IR-Image which sould be used for the NDVI-Calculation
+    :param  grayscale:  specifies, whether `rgb` and `ir` are grayscale images (only one color channel) or rgb images (three color channels). *Make sure, that both images have the same number of color channels*
+    :rtype: ``(ndvi, ndvi_float)``: ndvi is a heatmap image of the ndvi-values. ndvi_float is a float-array with the same dimensions as ndvi containing the raw NADVI-Values
     """
 #    ir = cv2.cvtColor(ir, cv2.COLOR_RGB2GRAY)
     ir = ir[0:, 0:, 2]
@@ -165,19 +155,38 @@ def calculateNDVI(rgb, ir, grayscale=False):
     return (ndvi, ndvi_float)
 
 
+def calculateRGRatio(im, gamma=1):          #TODO!
+    """
+    calculates the Ratio of the red and green channel
+
+    :param im:        Obviously the image whose channels get divided, duh... Must be
+        BGR. (3 Color channels)
+    :param gamma:     exponential to bring out the lower rg-ratios. You probably
+        want to choose values below 1
+    :rtype: ``(rg, rg_float)``: rg is a heatmap image of the r/g ratios. ndvi_float is a
+     float-array with the same dimensions containing the raw values for lookup in the GUI
+    """
+
+    # +1 to avoid division by 0... Shouldn't make a big difference in the interesting regions.
+    rg_float = im[:, :, 2] / (im[:, :, 1] + 1)
+    rg_float = nd.median_filter(rg_float, 5)
+    rg = rg_float**gamma
+    rg = np.around(rg)
+    rg = rg.astype(np.uint8)
+    rg = cv2.applyColorMap(rg, cv2.COLORMAP_PARULA)
+
+    return (rg, rg_float)
+
+
 def deflickerImage(im, column):
     """
     Attempts to get rid of the flickering bars caused by the LEDs. To do so it
     tries to straighten out the brightness values on a supposedly uniformly lit
     calibration bar at the edge of the image.
-|   **Parameters:**
-|       ``im:``     The image whose flickering bars you want to remove.
-                Can be a grayscale image or RGB. In case of grayscale,
-                every channel is deflickered independently
-|       ``column:`` The number of the column, where the calibration bar is located
-                in the image `im`
-|   **Out:**
-        ``im_corrected:``   A hopefully deflickered version of `im`.
+
+    :param im:   The image whose flickering bars you want to remove. Can be a grayscale image or RGB. In case of grayscale, every channel is deflickered independently
+    :param column:  The number of the column, where the calibration bar is located in the image `im`
+    :rtype: ``im_corrected``   A hopefully deflickered version of `im`.
     """
     start = config.getint('image processing', 'deflicker start')
     end = config.getint('image processing', 'deflicker end')
@@ -193,16 +202,19 @@ def deflickerImage(im, column):
     flicker_profile = np.float32(flicker_profile) / mean
     flicker_profile = sp.signal.medfilt(flicker_profile, 51)
 
-    correction = np.ones(im.shape)                          # creating the matrix
+    # creating the matrix
+    correction = np.ones(im.shape)
     flicker_profile = flicker_profile.reshape(len(flicker_profile), 1)
-    if (len(im.shape) == 3):            # I am sure, there are better ways to do this...
+    # I am sure, there are better ways to do this...
+    if (len(im.shape) == 3):
         correction[:, :, 0] = correction[:, :, 0] / flicker_profile
         correction[:, :, 1] = correction[:, :, 1] / flicker_profile
         correction[:, :, 2] = correction[:, :, 2] / flicker_profile
     else:
         correction[:, :] = correction / flicker_profile
 
-    im_corrected = np.uint8(np.around(np.clip(correction * im.astype(float), 0, 255)))
+    im_corrected = np.uint8(
+        np.around(np.clip(correction * im.astype(float), 0, 255)))
     return im_corrected
 
 
@@ -211,11 +223,10 @@ def undistortStereoPair(imR, imL):
     undistorts a pair of Stereo images based on the paramers given in paramFile.
     The distortion parameters are supplied by the config object and stored in
     ../data/stereoParams.npz. This file must be created using the `calibrate_stereo_cameras` Tool
-|   **Parameters:**
-|       ``imR:``    is the right image
-|       ``imL``     is the left image
-|   **Out:**
-|       ``(undistR, undistL):`` The undistorted versions of ``imR`` and ``imL``
+
+    :param imR:    is the right image
+    :param imL:    is the left image
+    :rtype: ``(undistR, undistL):`` The undistorted versions of ``imR`` and ``imL``
     """
     pars = np.load(config.get('image processing', 'stereo parameters'))
     h, w = imR.shape[:2]
@@ -233,9 +244,13 @@ def undistortStereoPair(imR, imL):
 
 def calculateDisparityMap(imR, imL):
     """
-    calculates the disparity map if imR and imL using the SGBM algorithm
+    calculates the disparity map of imR and imL using the SGBM algorithm
     with the parameters supplied in the config parser thing config.
-    THE IMAGES MUST BE PROPERLY ROTATED
+    *The images must be properly rotated and undistorted*
+
+    :param imR: The image taken by the right camera
+    :param imL: The image taken by the left camera
+    :rtype: ``disparity`` is a grayscale opencv image with the same dimensions as imL and aligned to it (not to imR).
     """
 
     min_disp = config.getint('SGBM', 'minDisparity')

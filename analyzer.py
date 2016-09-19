@@ -43,6 +43,11 @@ class dummy:
             time.sleep(0.01)  # super stupid hack to make the GUI update
             # properly...
 
+    def write_results(self):
+        string = "Total leaf Area:      " + str(proj.leafArea) + "\n"
+        string += "Average NDVI value:  " + str(proj.averageNDVI) + "\n"
+        self.resultview_buffer.set_text(string)
+
     def update_images(self):
         height = self.imRGB.get_allocation().height
         width = self.imRGB.get_allocation().width
@@ -55,6 +60,14 @@ class dummy:
                 pixbuf = pixbuf.scale_simple(height, width,
                                              GdkPixbuf.InterpType.BILINEAR)
             self.imNDVI.set_from_pixbuf(pixbuf)
+
+        if hasattr(proj, 'imRG'):
+            cv2.imwrite(proj.RGFilename, proj.imRG)
+            pixbuf1 = GdkPixbuf.Pixbuf.new_from_file(proj.RGFilename)
+            if self.zoom:
+                pixbuf1 = pixbuf1.scale_simple(height, width,
+                                               GdkPixbuf.InterpType.BILINEAR)
+            self.imRG.set_from_pixbuf(pixbuf1)
 
         if hasattr(proj, 'imRGB'):
             cv2.imwrite(proj.RGBFilename, proj.imRGB)
@@ -122,6 +135,20 @@ class dummy:
         else:
             print("The NDVI Values are not calculated yet...")
 
+    def on_rgBox_button_press_event(self, box, event):
+        x = int(event.x)
+        y = int(event.y)
+
+        if hasattr(proj, 'RG_float'):
+            fx = float(proj.RG_float.shape[1]) / float(self.imRG.get_allocation().height)
+            fy = float(proj.RG_float.shape[0]) / float(self.imRG.get_allocation().width)
+            if self.zoom is False:
+                fx = fy = 1      # to be changed later
+            rg_value = proj.RG_float[int(fy * y), int(fx * x)]
+            self.append_text_to_statusbar("red-gree-ratio: " + str(rg_value) + "\n")
+        else:
+            print("The red green ratios are not calculated yet...")
+
     def on_button_new_clicked(self, object, data=None):
         print("projectname chooser selected")
         self.projectname_entry.set_text(
@@ -135,6 +162,7 @@ class dummy:
         proj.RGBFilename = "./data/" + proj.name + "RGB.jpg"
         proj.RightFilename = "./data/" + proj.name + "Right.jpg"
         proj.NDVIFilename = "./data/" + proj.name + "NDVI.jpg"
+        proj.RGFilename = "./data/" + proj.name + "RG.jpg"
         proj.DispFilename = "./data/" + proj.name + "Disp.jpg"
         self.append_text_to_statusbar(
             "Set project name to " + proj.name + "\n")
@@ -153,6 +181,8 @@ class dummy:
         self.append_text_to_statusbar(" while...\n")
         proj.analyze(statusbar_printer=self.append_text_to_statusbar)
         self.update_images()
+        self.write_results()
+
 
     def on_window1_destroy(self, object, data=None):
         print("quit with cancel")
@@ -218,6 +248,8 @@ class dummy:
                                           self.fcdo.get_filename() + "\n")
             self.current_folder = self.fcdo.get_current_folder()
             self.fcdo.destroy()
+            self.update_images()
+            self.write_results()
 
         if self.response == gtk.ResponseType.CANCEL:
             self.fcdo.destroy()
@@ -242,11 +274,14 @@ class dummy:
         self.imRed = self.builder.get_object("imRed")
         self.imIR = self.builder.get_object("imIR")
         self.imNDVI = self.builder.get_object("imNDVI")
+        self.imRG = self.builder.get_object("imRG")
         self.images = self.builder.get_object("images")
         self.grid2 = self.builder.get_object("grid2")
         self.grid2.props.expand = True
         self.statusbar = self.builder.get_object("statusbar")
+        self.result_view = self.builder.get_object("result_view")
         self.statusbar_buffer = self.statusbar.get_buffer()
+        self.resultview_buffer = self.result_view.get_buffer()
         self.filefilter = gtk.FileFilter()
         self.filefilter.add_pattern("*.zip")
         self.current_folder = os.path.expanduser('~')
