@@ -1,5 +1,13 @@
 *** README for the PlantAnalyzer Python Sources ***
 
+This are the python and C sources implemented for usage of the MRCPPS
+(Machung Research Institute for Photosynthetic Pigments at Universitas Ma Chung, Malang)
+low cost multispectral PlantAnalyzer.
+
+While it may not be useful as is, for other projects unless you exactly copy
+our setup, some of the code, especially the measurement class might be useful
+for others too.
+
 Prerequisites
 =============
 
