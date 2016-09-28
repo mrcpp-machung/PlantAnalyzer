@@ -1,0 +1,102 @@
+.. PlantAnalyzer documentation master file, created by
+   sphinx-quickstart on Fri Sep  9 08:31:51 2016.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to PlantAnalyzer's documentation!
+=========================================
+.. toctree::
+   :maxdepth: 2
+
+The `PlantAnalyzer` Code
+========================
+
+The source code of the `PlantAnalyer` is grouped into six modules:
+
+ - The main module is the `measurement` class. This class holds all the data of an measurement and also the methods to analyze this data. It can be used on his own without the GUI in your Python scripts to allow for more specific measurements. This is especially useful, if you don't wish to extract all data possible but e.g. only NDVI values or leaf area and can save you a lot of time.
+ - The `image_processing` library holds all image processing algorithms that may also be useful outside of the use with the PlantAnalyzer and the measurement class.
+ - `native_stuff` holds some wrapper functions for image arithmetic methods that had to be implemented in C due to performance reasons. (So bascially all the jobs, which I didn't get properly vectorized.)
+ - `leds.py` provides some convenience functions to control the High power LEDs of the PlantAnalyzer
+ - The `ConfigParser` module provides the `config` object that reads the whole project configuration from ``analyzer.cfg``
+
+
+The `measurement` class
+-----------------------
+
+.. autoclass:: scripts.measurement.measurement
+    :members:
+
+The `image_processing` library
+------------------------------
+
+.. automodule:: scripts.image_processing
+    :members:
+
+The `native_stuff`
+-------------------
+
+.. automodule:: scripts.native_stuff
+    :members:
+
+The `leds.py` library
+---------------------
+
+.. automodule:: scripts.leds
+    :members:
+
+The `ConfigParser`
+------------------
+
+.. automodule:: scripts.config
+    :members:
+
+Auxiliary Tools
+==================
+
+The `calibrate_stereo_cameras.py` Tool
+--------------------------------------
+Purpose
+~~~~~~~~~
+
+The ``calibrate_stereo_cameras.py`` script is used to obtain the
+Camera Matrices, Distortion Coefficients as well as the rotation matrix between
+the cameras and the translation vector between them. It calculates them using
+the image pairs of checkerboards provided in the ``images`` file and saves
+the parameters as a ``.npz``-file. These parameters are needed to
+undistort the images for creating a disparity/depth map. *You only need
+to run this, if the camera configuration has changed.* If it did change, take
+the new image pairs using e.g. the ``doublePhoto.py`` script (at least
+10 pairs in different perspectives, compare to the pairs currently saved in
+``data/calibration\_images``), run the script and move the resulting
+``.npz``-file to the right location.
+
+Usage
+~~~~~~~~~
+.. program-output:: scripts/calibrate_stereo_cameras.py -h
+
+The `takePhoto.py` Tool
+-----------------------
+Purpose
+~~~~~~~~~~~~
+A wrapper script for the picamera. Basically the same purpuse as
+``raspistill`` program and thus is actually redundant, but still needed by
+he PlantAnalyzer to take the pictures.
+
+Usage
+~~~~~~~~~
+.. program-output:: takePhoto.py -h
+
+The `doublePhoto.py` Tool
+-------------------------
+Purpose
+~~~~~~~~~~
+This is a simple script two take a image pair with both cameras. This is useful
+e.g. to create the image pairs of the checkerboard needed by
+``calibrate_stereo_cameras.py`` or for testing of the disparity map
+functions. It assumes, that the IPs in ``/etc/hosts`` are set correctly
+and that the script ``~/bin/takePhoto.py`` is installed correctly.
+
+Usage
+~~~~~~~~~~~
+.. program-output:: scripts/doublePhoto.py -h
+
