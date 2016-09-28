@@ -1,9 +1,6 @@
-
-//#include<iostream>
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
-//using namespace std;
 
 //calculates the square of the euclidiean difference in colors between pix1 and pix2
 inline int colorDiff(uint8_t* pix1, uint8_t* pix2){

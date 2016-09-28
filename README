@@ -1,0 +1,38 @@
+*** README for the PlantAnalyzer Python Sources ***
+
+Prerequisites
+=============
+
+Honestly, I don't exactly remember all the additional Pythin Packages I installed...
+But you are for sure going to need those:
+    - opencv3
+    - numpy
+    - scipy
+    - RPi.GPIO (Raspberry Pi specific package)
+    - ConfigParser
+    - argparse
+    - cython
+    - zipfile
+    - gtk dev files (don't know the exact name of the package though...)
+
+
+Installation
+============
+
+Move the external executables to bin:
+    mv PlantAnalyzer/bin/* /home/pi/bin/.
+
+this must also be done on the second Raspberry Pi!
+
+Edit analyzer.cfg:
+    change raspi2IP to the IP address of your second Raspberry
+
+Now everything should work, but is obviously not calibrated. For Calibration see
+_build/latex/PlantAnalyzer.pdf
+
+
+Notes
+=====
+
+The Makefile is NOT an makefile for the python project, but only for the sphinx documentation!
+For a more detailed overview about the System used see the Paper published at...
