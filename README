@@ -3,7 +3,7 @@
 Prerequisites
 =============
 
-Honestly, I don't exactly remember all the additional Pythin Packages I installed...
+Honestly, I don't exactly remember all the additional Python Packages I installed...
 But you are for sure going to need those:
     - opencv3
     - numpy
@@ -19,17 +19,31 @@ But you are for sure going to need those:
 Installation
 ============
 
-Move the external executables to bin:
+**Move the external executables to bin:**
     mv PlantAnalyzer/bin/* /home/pi/bin/.
 
 this must also be done on the second Raspberry Pi!
 
-Edit analyzer.cfg:
+**Edit analyzer.cfg:**
     change raspi2IP to the IP address of your second Raspberry
 
 Now everything should work, but is obviously not calibrated. For Calibration see
 _build/latex/PlantAnalyzer.pdf
 
+
+Calibration
+===========
+**Stereo Calibration**
+See the description of ``calibrate_stereo_cameras.py`` in _build/latex/PlantAnalyzer.pdf
+
+**Depth Calibration**
+To determine the parameters [depth map]/(a,b) have a look at the strategy described
+in the accompanying paper Report.pdf
+
+**Camera Parameters**
+Can't help you there, just try which parameters for the shutterspeed, white balance
+etc. work best for you and then put them in the [camera] section of analyzer.cfg
+Same goes for [image processing]
 
 Notes
 =====
