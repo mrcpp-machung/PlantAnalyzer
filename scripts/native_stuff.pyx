@@ -1,9 +1,16 @@
-
 """
 native_stuff.pyx
 
-Wrapper for the C-Implementation of the colorMask Function. May contain more
-native code later on.
+Contains all Python Wrappers for the functions that had to be implemented in
+native C-Code.
+
+    .. note:: If the C-Code changes, the whole module must be recompiled using
+        ``setup.py build_ext --inplace`` with thes setup.py script in the
+        ``scripts`` folder
+
+.. members::
+ - Wrapper for the C-Implementation of the colorMask Function.
+ - Wrapper for the RGHistogramEqualizer function.
 """
 
 import cython
@@ -51,6 +58,38 @@ def colorMask(np.ndarray[np.uint8_t, ndim=3, mode="c"] img,
         c[i, 1] = colors[i][1]
         c[i, 2] = colors[i][2]
 
-    cpp_colorMask ( &img[0, 0, 0], &mask[0, 0], m, n, &c[0, 0], l, threshold)
+    cpp_colorMask (&img[0, 0, 0], &mask[0, 0], m, n, &c[0, 0], l, threshold)
+
+    return None
+
+
+# declare the interface to the C code
+cdef extern from "cpp_native_stuff.cpp":
+    void cpp_RGHistogramEqualizer(np.float32_t * src, np.uint8_t * dst,
+                                  int m, int n)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def RGHistogramEqualizer(np.ndarray[np.float32_t, ndim=2, mode="c"] src,
+                         np.ndarray[np.uint8_t, ndim=2, mode="c"] dst):
+    """
+    Wrapper for the natively in C implemented cpp_RGHistogramEqualizer function.
+
+    Creates a BW-Mask based on the list ``colors`` masking the pixels matching
+    one of the colors (within a certain accuracy defined by ``threshold``) white
+    and all others black.
+
+    :param src:     The source image whose histogramm needs to be equalized.
+                    Must be a np.ndarray with dtype float32(!).
+    :param dst:     The destination array. Must be data type uint8
+    :rtpye:         np.ndarray with the same dimensions as src and dtype np.uint8.
+                    Holds the remapped image, duhh.
+    """
+    cdef int m, n
+    m, n = src.shape[1], src.shape[0]
+#    dst = np.empty(src.shape, dtype=np.uint8_t)
+
+    cpp_RGHistogramEqualizer ( &src[0, 0], &dst[0, 0], m, n)
 
     return None

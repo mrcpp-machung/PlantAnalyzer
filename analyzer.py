@@ -31,8 +31,22 @@ DEBUG = True
 
 
 class dummy:
+    """
+    The big ass class that holds the whole GUI of the *PlantAnalyzer*.
+
+    Only the not self explaining functions like ``append_text_to_statusbar``
+    are documented, while it should be obvious what e.g. ``on_button_new_clicked``
+    does.
+    """
 
     def append_text_to_statusbar(self, text):
+        """
+        appends a line of text to the log window at the bottom of the window and
+        scrolls to the end of the text buffer displayed in the window.
+
+        :param text:  the string, that should be appended to the log window
+        :rtype: None
+       """
         iter = self.statusbar_buffer.get_end_iter()
         self.statusbar_buffer.insert(iter, text)
         iter = self.statusbar_buffer.get_end_iter()
@@ -44,11 +58,26 @@ class dummy:
             # properly...
 
     def write_results(self):
-        string = "Total leaf Area:      " + str(proj.leafArea) + "\n"
-        string += "Average NDVI value:  " + str(proj.averageNDVI) + "\n"
+        """
+        Writes the results of the Total leaf area, the average NDVI value
+        and the average R/G ratio to the result view on the right side of the GUI.
+
+        :rtype: None
+       """
+        string = "Total leaf Area:            " + str(proj.leafArea) + "\n"
+        string += "Average NDVI value:        " + str(proj.averageNDVI) + "\n"
+        string += "Average red green ration:  " + str(proj.averageRG) + "\n"
         self.resultview_buffer.set_text(string)
 
     def update_images(self):
+        """
+        Updates all images in the GUI.
+
+        .. warning:: **Must** be called after the GUI was resized or the images have changed
+        or ToggleZoom has been clicked
+
+        :rtype: None
+       """
         height = self.imRGB.get_allocation().height
         width = self.imRGB.get_allocation().width
 
@@ -116,6 +145,13 @@ class dummy:
         self.update_images()
 
     def on_ndviBox_button_press_event(self, box, event):
+        """
+        Is called, if the user clicks into the NDVI view. Prints the NDVI value
+        of the pixel clicked to the log window on the bottom.
+
+        :rtype: None
+       """
+
 #        pixbuf = self.imNDVI.get_pixbuf()
         x = int(event.x)
         y = int(event.y)
@@ -136,6 +172,13 @@ class dummy:
             print("The NDVI Values are not calculated yet...")
 
     def on_rgBox_button_press_event(self, box, event):
+        """
+        Is called, if the user clicks into the RG view. Prints the RG ratio
+        of the pixel clicked to the log window on the bottom.
+
+        :rtype: None
+       """
+
         x = int(event.x)
         y = int(event.y)
 
@@ -145,7 +188,7 @@ class dummy:
             if self.zoom is False:
                 fx = fy = 1      # to be changed later
             rg_value = proj.RG_float[int(fy * y), int(fx * x)]
-            self.append_text_to_statusbar("red-gree-ratio: " + str(rg_value) + "\n")
+            self.append_text_to_statusbar("red-green-ratio: " + str(rg_value) + "\n")
         else:
             print("The red green ratios are not calculated yet...")
 

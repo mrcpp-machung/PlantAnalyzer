@@ -39,7 +39,7 @@ class measurement:
 |       ``NDVI_float:``    a huge array with floats made to fool Biologists that they
                             have super precise data (which they don't!)
 |       ``rg:``            heat map of the red-green rations of the imRGB
-|       ``rg_float         red-green ratios of imRGB
+|       ``rg_float``         red-green ratios of imRGB
 |       ``RGBFilename``    Filename, where the RGB image is stored on the hard drive
 |       ``RedFilename``    self explanatory....
 |       ``IRFilename``     self explanatory
@@ -50,6 +50,7 @@ class measurement:
 |        a lot of Numbers I don't know about yet
 |       ``leafArea``        An estimate of the total leaf area
 |       ``averageNDVI``     average NDVI value of the leaves.
+|       ``averageRG``       average Ratio of the red and green reflectances of the leaves
     """
 
     def __init__(self, name):
@@ -174,7 +175,7 @@ class measurement:
 
         status_printer("calculating red-green ratios\n", statusbar_printer)
         (self.imRG, self.RG_float) = IP.calculateRGRatio(
-            self.imRGB, gamma=0.5)
+            self.imRGB)
 
         status_printer("Masking leaves\n", statusbar_printer)
         self.maskLeaves()
@@ -184,7 +185,7 @@ class measurement:
         self.computeDisparity()
         status_printer(
             "Calculating the leaf area and the average NDVI value\n", statusbar_printer)
-        self.calculateLeafAreaAndAverageNDVI()
+        self.calculateNumbers()
 
     def computeDisparity(self):
         """
@@ -226,7 +227,7 @@ class measurement:
         native_stuff.colorMask(self.imRGB, self.leafMask, greys, 20)
         self.leafMask = cv2.bitwise_not(self.leafMask)
 
-    def calculateLeafAreaAndAverageNDVI(self):
+    def calculateNumbers(self):
         """
         Calculates an estimate of the total leaf area of the plant using the disparity map and
         the mask.
@@ -237,8 +238,10 @@ class measurement:
         areaMap += config.getfloat('depth map', 'b')
         np.putmask(areaMap, self.leafMask < 100, 0.0)
         self.leafArea = np.sum(areaMap)
-        areaMap *= self.NDVI_float
-        self.averageNDVI = np.sum(areaMap) / self.leafArea
+        tmp1 = self.NDVI_float * areaMap
+        tmp2 = self.RG_float * areaMap
+        self.averageNDVI = np.sum(tmp1) / self.leafArea
+        self.averageRG = np.sum(tmp2) / self.leafArea
 
     def save(self, filename="gurkensalat.zip"):
         """
@@ -254,17 +257,17 @@ class measurement:
         if filename[-4:] != ".zip":         # make sure, we have the right filename extension
             filename += ".zip"
 
-        np.save(self.NDVI_floatFilename, self.NDVI_float)
-
         with open("data.txt", "w") as text_file:
-            text_file.write("Average NDVI Value:\n" + str(self.averageNDVI) + "\n")
             text_file.write("Total Leaf Area:\n" + str(self.leafArea) + "\n")
+            text_file.write("Average NDVI Value:\n" + str(self.averageNDVI) + "\n")
+            text_file.write("Average RG Value:\n" + str(self.averageRG) + "\n")
 
         file = zipfile.ZipFile(filename, mode='w')
         file.write(self.RGBFilename, "RGB.jpg")
         file.write(self.RedFilename, "Red.jpg")
         file.write(self.IRFilename, "IR.jpg")
         file.write(self.NDVIFilename, "NDVI.jpg")
+        file.write(self.RGFilename, "RG.jpg")
         file.write(self.RightFilename, "Right.jpg")
         file.write(self.DispFilename, "disparity.jpg")
         file.write(self.leafMaskFilename, "leafMask.jpg")
@@ -292,46 +295,80 @@ class measurement:
         print(self.name)
 
         file = zipfile.ZipFile(filename, mode='r')
+        contents = file.namelist()
+
         RGB = file.extract("RGB.jpg")
-        Red = file.extract("Red.jpg")
-        NDVI = file.extract("NDVI.jpg")
-        RG = file.extract("RG.jpg")
-        IR = file.extract("IR.jpg")
+        os.rename(RGB, self.RGBFilename)
+        self.imRGB = cv2.imread(self.RGBFilename)
+
         Right = file.extract("Right.jpg")
-        disparity = file.extract("disparity.jpg")
-        leafMask = file.extract("leafMask.jpg")
+        self.imRight = cv2.imread(self.RightFilename)
+        os.rename(Right, self.RightFilename)
+
+        IR = file.extract("IR.jpg")
+        os.rename(IR, self.IRFilename)
+        self.imIR = cv2.imread(self.IRFilename)
+
+        Red = file.extract("Red.jpg")
+        os.rename(Red, self.RedFilename)
+        self.imRed = cv2.imread(self.RedFilename)
+
+        if "NDVI.jpg" in contents:
+            NDVI = file.extract("NDVI.jpg")
+            os.rename(NDVI, self.NDVIFilename)
+            self.imNDVI = cv2.imread(self.NDVIFilename)
+        else:
+            (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(
+                self.imRed, self.imIR, grayscale=False)
+
+        if "RG.jpg" in contents:
+            RG = file.extract("RG.jpg")
+            os.rename(RG, self.RGFilename)
+            self.imRG = cv2.imread(self.RGFilename)
+            legacy_file = False
+        else:
+            (self.imRG, self.RG_float) = IP.calculateRGRatio(
+                self.imRGB)
+            legacy_file = True
+
+        if "disparity.jpg" in contents:
+            disparity = file.extract("disparity.jpg")
+            os.rename(disparity, self.DispFilename)
+            self.disparity = cv2.imread(self.DispFilename, 0)
+        else:
+            self.computeDisparity()
+
+        if "leafMask.jpg" in contents:
+            leafMask = file.extract("leafMask.jpg")
+            os.rename(leafMask, self.leafMaskFilename)
+            self.leafMask = cv2.imread(self.leafMaskFilename)
+        else:
+            self.maskLeaves()
+
 #        NDVI_float = file.extract("NDVI_float.npy")
         textfile = file.extract("data.txt")
 
-        os.rename(RGB, self.RGBFilename)
-        os.rename(Red, self.RedFilename)
-        os.rename(NDVI, self.NDVIFilename)
-        os.rename(RG, self.RGFilename)
-        os.rename(IR, self.IRFilename)
-        os.rename(Right, self.RightFilename)
-        os.rename(disparity, self.DispFilename)
-        os.rename(leafMask, self.leafMaskFilename)
 #        os.rename(NDVI_float, self.NDVI_floatFilename + ".npy")
 
-        self.imRGB = cv2.imread(self.RGBFilename)
-        self.imRed = cv2.imread(self.RedFilename)
-        self.imNDVI = cv2.imread(self.NDVIFilename)
-        self.imRG = cv2.imread(self.RGFilename)
-        self.imIR = cv2.imread(self.IRFilename)
-        self.imRight = cv2.imread(self.RightFilename)
-        self.disparity = cv2.imread(self.DispFilename, 0)
-        self.leafMask = cv2.imread(self.leafMaskFilename)
 #        self.NDVI_float = np.load(self.NDVI_floatFilename + ".npy")
 
-        with open(textfile, "r") as text_file:
-            tmplist = []
-            for l in text_file:
-                tmplist.append(l)
-            self.averageNDVI = float(tmplist[1])
-            self.leafArea = float(tmplist[3])
+        if not legacy_file:
+            with open(textfile, "r") as text_file:
+                tmplist = []
+                for l in text_file:
+                    tmplist.append(l)
 
-        (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(
-            self.imRed, self.imIR, grayscale=False)
+                self.leafArea = float(tmplist[1])
+                self.averageNDVI = float(tmplist[3])
+                self.averageRG = float(tmplist[5])
+
+        if not hasattr(self, 'NDVI_float'):
+            (self.imNDVI, self.NDVI_float) = IP.calculateNDVI(
+                self.imRed, self.imIR, grayscale=False)
+
+        if not hasattr(self, 'RG_Float'):
+            (self.imRG, self.RG_float) = IP.calculateRGRatio(
+                self.imRGB)
 
         self.undistorted = True
         self.deflickered = True

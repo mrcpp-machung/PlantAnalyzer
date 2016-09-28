@@ -10,6 +10,7 @@ from config import config
 from scipy import ndimage as nd
 import scipy as sp
 from scipy import signal
+import native_stuff
 
 
 def alignImages(im1, im2, showMatches=False, threshold=0.5,
@@ -155,25 +156,23 @@ def calculateNDVI(rgb, ir, grayscale=False):
     return (ndvi, ndvi_float)
 
 
-def calculateRGRatio(im, gamma=1):          #TODO!
+def calculateRGRatio(im):
     """
     calculates the Ratio of the red and green channel
 
     :param im:        Obviously the image whose channels get divided, duh... Must be
         BGR. (3 Color channels)
-    :param gamma:     exponential to bring out the lower rg-ratios. You probably
-        want to choose values below 1
     :rtype: ``(rg, rg_float)``: rg is a heatmap image of the r/g ratios. ndvi_float is a
      float-array with the same dimensions containing the raw values for lookup in the GUI
     """
 
     # +1 to avoid division by 0... Shouldn't make a big difference in the interesting regions.
-    rg_float = im[:, :, 2] / (im[:, :, 1] + 1)
-    rg_float = nd.median_filter(rg_float, 5)
-    rg = rg_float**gamma
-    rg = np.around(rg)
-    rg = rg.astype(np.uint8)
+    rg_float = im[:, :, 2].astype(np.float32) / (im[:, :, 1].astype(np.float32) + 0.000001)
+#    rg_float = nd.median_filter(rg_float, 5)
+    rg = np.empty(rg_float.shape, dtype=np.uint8)
+    native_stuff.RGHistogramEqualizer(rg_float, rg)
     rg = cv2.applyColorMap(rg, cv2.COLORMAP_PARULA)
+    rg_float = nd.median_filter(rg_float, 5)
 
     return (rg, rg_float)
 
